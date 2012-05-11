@@ -1,0 +1,194 @@
+\documentclass{beamer}
+%\usepackage[latin1]
+%\usepackage[utf8x]{inputenc}
+%\usepackage[cm-default]{fontspec}
+%\usepackage{graphicx}
+%\usepackage{subfigure}
+%\usepackage{wrapfig}
+%\usepackage{xunicode}
+%\usepackage{xltxtra}
+%\usepackage{soul}
+
+\usetheme{Warsaw}
+\title[Ethical Hacking Seminars]{How to break into wireless LAN's enrypted with WEP/WPA}
+\author{Giorgos (fedjo) Marinellis}
+\institute{Foss@Ntua}
+\date{April 09 2012}
+\begin{document}
+
+\begin{frame}
+\titlepage
+\end{frame}
+
+
+\begin{frame}{Introduction}
+\begin{itemize}
+ \item \textbf{What's a wireless AP encryption?}
+ \item A method to encrypt our network traffic and authenticate with APs and don't allow curious people see our packets
+ \item \textbf{How is been achived?}
+\item In general ways the packet is encrypted with a secret key. Only users who have this key can decrypt
+packets.Other will see crap...
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{The old way of encryption - WEP 'encrypted' w-networks }
+ \begin{itemize}
+  \item It's a very old encryption method based on cipher RC4 and CRC-32
+\item It is provided in to methods 64bit-WEP and 128bit-WEP (and 256-WEP) and they are recognized from a 40 bit 
+or 104 bit key. These strings are concatenated with a 24bit Initialization Vector(IV) to form the
+RC4 key.
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{Authentication}
+ \begin{itemize}
+  \item Two methods of authentication.Open System  and Shared Key authentication
+\item In Open System auth. no auth. with the AP is done.Key is only for encrypting data frames
+\item In Shared Key auth. we have a 4-way handsake with the AP and then packet encryption
+\item The for steps are shown below
+ \end{itemize}
+
+\end{frame}
+
+\begin{frame}{4-way authentication with AP}
+ \begin{figure}
+  \includegraphics[scale=0.5]{wep_fig1}
+ \end{figure}
+\begin{itemize}
+\item Although it is not safer to use Shared Key auth. because keystream can be derived from the challenge packets
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Protocol leakage...}
+ \begin{figure}
+  \includegraphics[scale=0.35]{wep_fig2.png}
+\end{figure}
+\begin{itemize}
+  \item Because RC4 is a stream cipher IV must not be repetead but for an 24bit IV there is a 50\% probability
+  the IV will repeat every 5000 packets.
+  \item And this is where the party starts. Grabbing as many IVs from packets we can then crack the WEP key
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Let's get started...}
+\begin{itemize}
+ \item \textbf{What we will need:}
+\pause \item A wireless NIC with monitor mode
+\pause \item A packet sniffer
+\pause \item Aircrack-ng
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Enable monitor mode}
+ \begin{itemize}
+\pause  \item \textbf{\#: airmon-ng wlan0 start}\hspace{10pt} as root\\(maybe a new virtual interface will appear)
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{Explore wireless networks and grab IV's}
+ \begin{itemize}
+\pause  \item \textbf{\$: airodump mon0 }\hspace{10pt}\hspace{10pt} to see networks 
+\pause  \item \textbf{\$: airodump mon0 $<output>$  $<channel> $ 1}\hspace{10pt} to start grab IV's
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{The procedure...}
+ \begin{itemize}
+\item As we can see airodump gives as a lot info about the network
+\item We can to collect at least 100.000 packets (under \# Data) 
+\begin{figure}
+ \includegraphics[scale=0.35]{airodumo}
+\end{figure}
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{Cracking procedure}
+ \begin{itemize}
+\pause  \item \textbf{\$: aircrack-ng -a 1 -b $<bssid>$ -n $<key-length>$ $<output.ivs>$ }
+\item There are several options you can use 
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{Traffic problems}
+ \begin{itemize}
+\pause \item Because we may suffer from packet un\-traffic WE have to generate more traffic 
+ \pause \item That's why we use \textbf{aireplay}
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{ARP Injection}
+ \begin{itemize} 
+\pause  \item \textbf{\$: aireplay -3 -b $<AP MAC>$ -h $<Client MAC>$  mon0}
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{Re-send all data attack}
+ \begin{itemize} 
+\pause \item Ask AP to resend all packets. Some AP's re-encrypt them some use the same IV's
+\pause  \item \textbf{\$: aireplay -2 -b $<AP MAC>$ -h $<Client MAC>$ -n 100 -p 0841 -c FF:FF:FF:FF:FF:FF mon0}
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{Fake Authentication}
+ \begin{itemize} 
+\pause \item Won't generate more traffic but it is uselful if there are no connected clients and we need to 
+apply latter attacks
+\pause \item It's easier if we have another station otherwise we must spoof ou MAC
+\pause  \item \textbf{\$: aireplay -1 30 -e $<ESSID>$ -b $<BSSID>$ -h $<New MAC>$  mon0}
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{The new trend WPA/WPA2-PSK }
+ \begin{itemize}
+ \pause \item We'll talk about the PSK(Pre Shared Key) Personal edition
+\pause \item There is a 2-way handsake authentication with the AP based on a secret key that each client must
+know
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{Let's go deep}
+ \begin{itemize}
+ \pause \item The AP generates PMK(Pairwise Master Key) from PSK and ESSID and ESSID length hashed 4096 times with SHA-1
+\pause \item Each time a client going to associate with the AP generates it's PMK
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{The handshake }
+ \begin{itemize}
+ \pause \item The AP sends to the client a random number called ANonce
+\pause \item The client also generate it's random number called SNonce and mixes the PMK, ANonce, SNonce, MAC\_AP,
+MAC\_Client and generates a 512 byte number called PTK 
+\pause \item Then encrypts SNonce with PTK(MIC digital sign) and sends both SNonce and MIC to AP
+\pause \item If the AP can match this 2 numbers then we have authentication
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{The new trend WPA/WPA2-PSK }
+ \begin{figure}
+  \includegraphics[scale=0.35]{wpa1}
+ \end{figure}
+\end{frame}
+
+\begin{frame}{Where is the problem...? }
+ \begin{itemize}
+ \pause \item We can sniff during authentication SNonce, ANonce, MIC
+\pause \item Then with bruteforcing we can use all available passphrases to check...!
+\pause \item But this is an extremely long procedure
+ \end{itemize}
+\end{frame}
+
+\begin{frame}{For instance}
+ \begin{itemize}
+ \pause \item We can use rainbow tables with precomputed PMK's for each different ESSID
+\pause \item This is also a very heavy procedure but...
+\pause \item we can base on peoples awareness not changing the default SSID and PSK
+\pause \item There are rainbow tables free on the internet which you can use
+ \end{itemize}
+\end{frame}
+
+
+
+\end{document}
